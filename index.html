@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💌</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: radial-gradient(ellipse at 50% 110%, #2a0845 0%, #0d0025 55%, #000010 100%);
+      font-family: '幼圆', 'YouYuan', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      color: #fff;
+      user-select: none;
+    }
+
+    /* ── 画布层 ── */
+    canvas {
+      position: fixed;
+      inset: 0;
+      display: block;
+    }
+    #heart-trail { z-index: 0; pointer-events: none; }
+    #cas         { z-index: 5; pointer-events: auto; }
+
+    /* ── 主内容 ── */
+    #stage {
+      position: fixed; inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+      padding: 40px 20px;
+      pointer-events: none;
+    }
+
+    #big-heart {
+      font-size: 76px;
+      line-height: 1;
+      animation: heartbeat 1.8s ease-in-out infinite;
+      filter: drop-shadow(0 0 28px rgba(255,40,140,.9));
+      cursor: pointer;
+      pointer-events: auto;
+      will-change: transform;
+      transition: font-size .4s;
+    }
+    @keyframes heartbeat {
+      0%,100% { transform: scale(1);    }
+      15%     { transform: scale(1.20); }
+      30%     { transform: scale(1.04); }
+      45%     { transform: scale(1.18); }
+      60%     { transform: scale(1);    }
+    }
+
+    #typer {
+      font-size: clamp(22px, 4.5vw, 50px);
+      font-weight: 300;
+      letter-spacing: .18em;
+      text-align: center;
+      text-shadow: 0 0 40px rgba(255,160,210,.7);
+      min-height: 1.5em;
+    }
+    #cur {
+      display: inline-block;
+      width: 2px; height: .85em;
+      background: #ffb3d9;
+      vertical-align: middle;
+      margin-left: 3px;
+      animation: blink .75s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    #card {
+      background: rgba(255,255,255,.045);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: 28px;
+      padding: clamp(26px,5vw,52px) clamp(30px,8vw,80px);
+      max-width: 780px; /* 卡片最大宽度，调大则卡片更宽 */
+      width: 90%;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: clamp(18px, 3vw, 30px);
+      text-align: center;
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 1.1s ease, transform 1.1s ease;
+    }
+    #card.show { opacity: 1; transform: translateY(0); }
+    .card-text {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    #card p {
+      font-family: '幼圆', 'YouYuan', sans-serif; /* 卡片字体：幼圆 */
+      font-size: clamp(20px, 3vw, 26px); /* 卡片普通字号：最小/响应式/最大 */
+      line-height: 2.3;
+      color: rgba(255,255,255,.82);
+      font-weight: 300;
+    }
+    #card p.hl {
+      color: #ffb3d9;
+      font-size: clamp(23px, 3.7vw, 31px); /* 卡片高亮字号：最小/响应式/最大 */
+      font-weight: 400;
+      text-shadow: 0 0 18px rgba(255,100,180,.55);
+    }
+
+    #question {
+      font-family: '幼圆', 'YouYuan', sans-serif; /* 问题字体：幼圆 */
+      font-size: clamp(22px, 3.2vw, 34px); /* 问题字号：最小/响应式/最大 */
+      text-align: center;
+      opacity: 0;
+      transition: opacity 1.3s ease;
+      letter-spacing: .06em;
+    }
+    #question.show { opacity: 1; }
+
+    #btns {
+      display: flex;
+      gap: 22px;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 1s ease;
+      pointer-events: none;
+    }
+    #btns.show { opacity: 1; pointer-events: auto; }
+
+    /* 求婚照片：三个值依次为 最小/响应式/最大高度，想整体调大就把这三个数一起放大 */
+    #propose-img {
+      height: clamp(170px, 27vw, 260px);
+      width: auto;
+      flex: 0 0 auto;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    /* 烟花界面底部两图（婚纱照） */
+    #wedding-left {
+      position: fixed;
+      bottom: 0;
+      left: 25%;               /* 底部左图水平位置：25% = 距左边 1/4 处 */
+      transform: translateX(-50%);
+      z-index: 20;
+      height: clamp(200px, 34vh, 360px); /* 婚纱照高度：最小/响应式/最大 */
+      width: auto;
+      pointer-events: none;
+      display: none;
+    }
+    #wedding-right {
+      position: fixed;
+      bottom: 0;
+      right: 25%;              /* 底部右图水平位置：25% = 距右边 1/4 处 */
+      transform: translateX(50%);
+      z-index: 20;
+      height: clamp(200px, 34vh, 360px); /* 婚纱照高度：最小/响应式/最大 */
+      width: auto;
+      pointer-events: none;
+      display: none;
+    }
+    .btn {
+      padding: 14px 48px;
+      border-radius: 50px;
+      font-size: 18px;
+      font-family: '幼圆', 'YouYuan', sans-serif; /* 按钮字体：幼圆 */
+      border: none;
+      cursor: pointer;
+      letter-spacing: .08em;
+    }
+    #btn-yes {
+      background: linear-gradient(135deg,#ff6b9d,#e91e8c,#c2185b);
+      color: #fff;
+      box-shadow: 0 6px 28px rgba(233,30,140,.45);
+      transition: transform .25s, box-shadow .25s;
+    }
+    #btn-yes:hover {
+      transform: translateY(-5px) scale(1.07);
+      box-shadow: 0 16px 44px rgba(233,30,140,.7);
+    }
+    #btn-yes:active { transform: scale(.95); }
+
+    #btn-no {
+      background: transparent;
+      color: rgba(255,255,255,.35);
+      border: 1px solid rgba(255,255,255,.2);
+      position: fixed;
+      transition: left .3s ease, top .3s ease;
+      pointer-events: auto;
+    }
+
+    #cheer {
+      font-size: clamp(20px,3.5vw,36px);
+      text-align: center;
+      color: #ffb3d9;
+      text-shadow: 0 0 30px rgba(255,120,200,.8);
+      opacity: 0;
+      transition: opacity 1.5s ease;
+      letter-spacing: .06em;
+    }
+    #cheer.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- 开头背景：爱心拖尾 -->
+<canvas id="heart-trail"></canvas>
+<!-- 庆祝烟花（旧版方式） -->
+<canvas id="cas" style="display:none;"></canvas>
+
+<!-- 烟花形状（文本 / 图案爆炸） -->
+<div style="display:none">
+  <div class="shape">爱围绕你左右</div>
+  <div class="shape">爱你</div>
+  <div class="shape">大蕾</div>
+  <div class="shape">小仙女</div>
+  <div class="shape">遇见你真好</div>
+  <div class="shape">余生皆是你</div>
+  <div class="shape">一直陪着你</div>
+  <div class="shape">一起到老</div>
+  <div class="shape">岁岁年年</div>
+  <div class="shape">朝朝暮暮</div>
+  <div class="shape">执子之手</div>
+  <div class="shape">好运+1</div>
+  <div class="shape">好运x10</div>
+  <div class="shape">财富+1</div>
+  <div class="shape">财富x10</div>
+</div>
+
+<div id="stage">
+  <div id="big-heart">💗</div>
+
+  <div id="typer">
+    <span id="tw"></span><span id="cur"></span>
+  </div>
+
+  <div id="card">
+    <img id="propose-img" src="Source/封面1.png" alt="求婚" />
+    <div class="card-text">
+      <p class="hl">虽然美好的事物</p>
+      <p>都值得等待</p>
+      <p>但和你一辈子</p>
+      <p class="hl">这件事却让我有些迫不及待</p>
+    </div>
+  </div>
+
+  <div id="question">你愿意，让我一直陪在你身边吗？✨</div>
+
+  <div id="btns">
+    <button class="btn" id="btn-yes" onclick="celebrate()">愿意 💕</button>
+    <button class="btn" id="btn-no"  onmouseover="runaway(this)">不愿意</button>
+  </div>
+
+  <div id="cheer">太好了！✨ 一起看烟花吧！ 💗</div>
+</div>
+
+<!-- 烟花界面底部：婚纱照 -->
+<img id="wedding-left" src="Source/婚纱2.png" alt="婚纱" />
+<img id="wedding-right" src="Source/婚纱1.png" alt="婚纱" />
+
+<!-- 背景音乐 -->
+<audio id="bgm" src="Source/Two-way love (双向奔赴).mp3" loop preload="auto"></audio>
+
+<script>
+/* ============================================================
+   开头背景：爱心拖尾（来自「开头背景.html」）
+   ============================================================ */
+(function () {
+  var canvas = document.getElementById('heart-trail');
+  var ctx = canvas.getContext('2d');
+  var ww, wh;
+
+  function onResize() {
+    ww = canvas.width = window.innerWidth;
+    wh = canvas.height = window.innerHeight;
+  }
+
+  // 预渲染一颗带光晕的爱心到离屏画布（只做一次），
+  // 运行时用 drawImage 绘制，避免每帧 shadowBlur + 重描 100 顶点路径
+  var PRECISION = 40;
+  var SPRITE = 64;
+  var heartSprite = (function () {
+    var c = document.createElement('canvas');
+    c.width = c.height = SPRITE;
+    var s = c.getContext('2d');
+    s.translate(SPRITE / 2, SPRITE / 2);
+    s.scale(SPRITE / 32, SPRITE / 32); // 原爱心坐标范围约 ±16
+
+    function trace(k) {
+      s.beginPath();
+      for (var i = 0; i <= PRECISION; i++) {
+        var step = (i / PRECISION - 0.5) * Math.PI * 2;
+        var x = 15 * Math.pow(Math.sin(step), 3) * k;
+        var y = -(13 * Math.cos(step) - 5 * Math.cos(2 * step) - 2 * Math.cos(3 * step) - Math.cos(4 * step)) * k;
+        if (i === 0) s.moveTo(x, y); else s.lineTo(x, y);
+      }
+      s.closePath();
+    }
+
+    // 外发光（几层半透明填充，替代运行时阴影）
+    s.fillStyle = 'rgba(255,0,80,0.15)'; trace(1.55); s.fill();
+    s.fillStyle = 'rgba(255,0,80,0.25)'; trace(1.28); s.fill();
+    s.fillStyle = '#ff2b60';             trace(1);    s.fill();
+    return c;
+  })();
+
+  var hearts = [];
+  var MAX = 120; // 爱心数量上限，防止无限累积
+
+  function Heart(x, y) {
+    this.x = x;
+    this.y = y;
+    this.size = 22 + Math.random() * 30;           // 像素尺寸（放大）
+    this.vx = (Math.random() - 0.5) * 1.8;
+    this.vy = (Math.random() - 0.5) * 1.8;
+    this.shrink = 0.18 + Math.random() * 0.45;     // 每帧缩小
+  }
+
+  function onMove(e) {
+    var x, y;
+    if (e.type === 'touchmove') { x = e.touches[0].clientX; y = e.touches[0].clientY; }
+    else { x = e.clientX; y = e.clientY; }
+    hearts.push(new Heart(x, y), new Heart(x, y));
+    if (hearts.length > MAX) hearts.splice(0, hearts.length - MAX);
+  }
+
+  function render() {
+    requestAnimationFrame(render);
+    ctx.clearRect(0, 0, ww, wh);
+    ctx.globalCompositeOperation = 'screen';
+
+    // 漂浮的环境爱心（限流）
+    if (hearts.length < MAX) hearts.push(new Heart(Math.random() * ww, Math.random() * wh));
+
+    for (var i = hearts.length - 1; i >= 0; i--) {
+      var h = hearts[i];
+      h.size -= h.shrink;
+      h.x += h.vx;
+      h.y += h.vy;
+      if (h.size < 3) { hearts.splice(i, 1); continue; }
+      ctx.globalAlpha = Math.min(1, h.size / 24);
+      ctx.drawImage(heartSprite, h.x - h.size / 2, h.y - h.size / 2, h.size, h.size);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  onResize();
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove);
+  window.addEventListener('resize', onResize);
+  requestAnimationFrame(render);
+})();
+
+/* ============================================================
+   互动方式（来自「开头互动方式.html」）
+   打字机 + 问答 + 按钮
+   ============================================================ */
+let W = window.innerWidth, H = window.innerHeight;
+window.addEventListener('resize', () => { W = window.innerWidth; H = window.innerHeight; });
+
+/* ── 打字机 ── */
+const twEl = document.getElementById('tw');
+let twTimer = null; // 在一起计时器，celebrate 时清除
+
+function typewrite(text, speed = 105) {
+  return new Promise(res => {
+    let i = 0;
+    const iv = setInterval(() => {
+      twEl.textContent += text[i++];
+      if (i >= text.length) { clearInterval(iv); res(); }
+    }, speed);
+  });
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function sequence() {
+  await sleep(600);
+  await typewrite('嗨，小仙女✨', 108);
+  await sleep(850);
+  twEl.textContent = '';
+  await typewrite('截至此时此刻，我们已经在一起', 118);
+  await sleep(750);
+  twEl.textContent = '';
+  document.getElementById('cur').style.display = 'none';
+  const START_TIME = new Date(2025, 7, 29, 0, 0, 0); // 在一起起始时间：2025-08-29 00:00:00（月份 0 起，7 = 8 月）
+  function fmtTogether() {
+    let diff = Math.floor((Date.now() - START_TIME.getTime()) / 1000); // 相差秒数
+    const days  = Math.floor(diff / 86400); diff %= 86400;
+    const hours = Math.floor(diff / 3600);  diff %= 3600;
+    const mins  = Math.floor(diff / 60);
+    const secs  = diff % 60;
+    return days + '天' + String(hours).padStart(2, '0') + '小时' +
+           String(mins).padStart(2, '0') + '分钟' + String(secs).padStart(2, '0') + '秒';
+  }
+  function tickTogether() { twEl.textContent = fmtTogether(); }
+  tickTogether();
+  twTimer = setInterval(tickTogether, 1000); // 每秒刷新一次
+
+  await sleep(900);
+  document.getElementById('card').classList.add('show');
+  await sleep(1800);
+  document.getElementById('question').classList.add('show');
+  await sleep(1600);
+  const btns = document.getElementById('btns');
+  btns.classList.add('show');
+  await sleep(100);
+  const yr = document.getElementById('btn-yes').getBoundingClientRect();
+  const no = document.getElementById('btn-no');
+  no.style.left = (yr.right + 22) + 'px';
+  no.style.top  = yr.top + 'px';
+}
+
+/* ── 庆祝（点击「愿意」后，按旧版方式放烟花） ── */
+function celebrate() {
+  // 点击「愿意」后不再显示文字与爱心图形，只保留烟花
+  document.getElementById('big-heart').style.display = 'none';
+  document.getElementById('tw').textContent = '';
+  if (twTimer) { clearInterval(twTimer); twTimer = null; }
+  document.getElementById('card').classList.remove('show');
+  document.getElementById('question').classList.remove('show');
+  document.getElementById('btns').classList.remove('show');
+  document.getElementById('cheer').classList.add('show'); // 展示庆祝语
+  setTimeout(() => document.getElementById('cheer').classList.remove('show'), 3000); // 短暂显示后淡出
+
+  // 旧版烟花：显示画布并启动 initAnimate（fire.js）
+  document.getElementById('cas').style.display = 'block';
+  document.getElementById('wedding-left').style.display = 'block';
+  document.getElementById('wedding-right').style.display = 'block';
+
+  // 播放背景音乐
+  var bgm = document.getElementById('bgm');
+  if (bgm) { bgm.play().catch(function () {}); }
+
+  initAnimate();
+}
+
+/* ── 逃跑按钮 ── */
+let noFixed = false;
+function runaway(btn) {
+  if (!noFixed) {
+    const r = btn.getBoundingClientRect();
+    btn.style.margin = '0';
+    btn.style.left   = r.left + 'px';
+    btn.style.top    = r.top  + 'px';
+    noFixed = true;
+    void btn.offsetWidth;
+  }
+  btn.style.left = (16 + Math.random() * (W - btn.offsetWidth  - 32)) + 'px';
+  btn.style.top  = (16 + Math.random() * (H - btn.offsetHeight - 32)) + 'px';
+}
+
+/* ── 大爱心点击 ── */
+document.getElementById('big-heart').addEventListener('click', () => {
+  const h = document.getElementById('big-heart');
+  h.style.transform = 'scale(1.5) rotate(12deg)';
+  setTimeout(() => h.style.transform = '', 380);
+});
+
+/* ── 启动互动流程 ── */
+sequence();
+</script>
+
+<!-- 旧版烟花逻辑 -->
+<script src="Source/fire.js"></script>
+</body>
+</html>
