@@ -188,7 +188,7 @@ Boom.prototype = {
     },
     _shapBoom: function() {
         var that = this;
-        // 【文字烟花采样步长】数值越小、文字颗粒越密集（当前 3）
+        // 【文字烟花采样步长】在 putValue 内按字号自动计算：字号越大、步长越大、粒子越少
         putValue(ocas, octx, this.shape, 3,
             function(dots) {
                 var dx = canvas.width / 2 - that.x;
@@ -204,6 +204,8 @@ Boom.prototype = {
                     // 【文字烟花颗粒半径】随机范围，越小越细小（当前 0.8~2）
                     var radius = getRandom(0.8, 2);
                     var frag = new Frag(that.x, that.y, radius, color, x - dx, y - dy);
+                    // 【文案停留帧数】文字烟花成形后停住再散开（约 35 帧 ≈ 0.66 秒）
+                    frag.holdFrames = 35;
                     that.booms.push(frag)
                 }
             })
@@ -233,6 +235,9 @@ function putValue(canvas, context, ele, dr, callback) {
         context.fillStyle = "rgba(" + parseInt(getRandom(200, 255)) + "," + parseInt(getRandom(200, 255)) + "," + parseInt(getRandom(200, 255)) + " , 1)";
         context.fillText(text, canvas.width / 2, canvas.height / 2);
         context.restore();
+        // 【文字烟花采样步长】按字号联动：字号越大步长越大、粒子越少，避免大文案卡顿
+        // 正视差 = fontSize / 22（最少 3）；字号 90→约 4，字号 240→约 11
+        dr = Math.max(3, Math.round(fontSize / 22));
         dots = getimgData(canvas, context, dr);
         callback(dots)
     }
@@ -310,6 +315,7 @@ var Frag = function(centerX, centerY, radius, color, tx, ty) {
     this.color = color;
     this.alpha = 1;
     this.scatter = false;
+    this.holdFrames = 0; // 停留帧数：文字烟花到达后先停住不散开
     this.vx = 0;
     this.vy = 0
 };
@@ -327,6 +333,12 @@ Frag.prototype = {
         var dx = this.tx - this.x,
             dy = this.ty - this.y;
         if (!this.scatter && Math.abs(dx) < 1 && Math.abs(dy) < 1) {
+            // 【文案停留】到达目标后先停住 holdFrames 帧再散开，数值越大停得越久
+            if (this.holdFrames > 0) {
+                this.holdFrames--;
+                this.paint();
+                return;
+            }
             this.scatter = true;
             // 【散落水平/竖直初速度】随机范围，越大散得越开
             this.vx = getRandom(-1.5, 1.5);

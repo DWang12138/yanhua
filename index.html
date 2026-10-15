@@ -218,8 +218,6 @@
 <div style="display:none">
   <div class="shape">爱围绕你左右</div>
   <div class="shape">爱你</div>
-  <div class="shape">大蕾</div>
-  <div class="shape">小仙女</div>
   <div class="shape">遇见你真好</div>
   <div class="shape">余生皆是你</div>
   <div class="shape">一直陪着你</div>
@@ -231,6 +229,11 @@
   <div class="shape">好运x10</div>
   <div class="shape">财富+1</div>
   <div class="shape">财富x10</div>
+  <div class="shape">幸福+1</div>
+  <div class="shape">幸福x10</div>
+  <div class="shape">世界因你而亮</div>
+  <div class="shape">世间万物不及你</div>
+  <div class="shape">好运连连</div>
 </div>
 
 <div id="stage">
@@ -387,7 +390,6 @@ async function sequence() {
   await typewrite('截至此时此刻，我们已经在一起', 118);
   await sleep(750);
   twEl.textContent = '';
-  document.getElementById('cur').style.display = 'none';
   const START_TIME = new Date(2025, 7, 29, 0, 0, 0); // 在一起起始时间：2025-08-29 00:00:00（月份 0 起，7 = 8 月）
   function fmtTogether() {
     let diff = Math.floor((Date.now() - START_TIME.getTime()) / 1000); // 相差秒数
@@ -399,7 +401,9 @@ async function sequence() {
            String(mins).padStart(2, '0') + '分钟' + String(secs).padStart(2, '0') + '秒';
   }
   function tickTogether() { twEl.textContent = fmtTogether(); }
-  tickTogether();
+  // 在一起时间也用打字机逐字打出，打完后再每秒刷新
+  await typewrite(fmtTogether(), 105);
+  document.getElementById('cur').style.display = 'none';
   twTimer = setInterval(tickTogether, 1000); // 每秒刷新一次
 
   await sleep(900);
